@@ -1,3 +1,5 @@
 var/
 .env
 __pycache__/
+web/
+docs/

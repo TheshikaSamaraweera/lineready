@@ -174,6 +174,9 @@ def build_brief(engineer_id: str, now: datetime | None = None) -> dict:
     brief = Brief(engineer_id, eng["name"], now, f"{settings.station} night shift · {now:%d %b %Y} 22:00–06:00",
                   slots, pinned, dossiers, handover, sorted(set(gaps)), stats)
     payload = to_dict(brief)
+    payload["aircraft_types"] = {r["reg"]: r["ac_type"] for r in query(
+        "SELECT reg, max(ac_type) ac_type FROM fault_event WHERE reg = ANY(%s) GROUP BY reg", ([s.reg for s in slots],))}
+    payload["built_at"] = datetime.now().isoformat(timespec="seconds")
     payload["fleet_patterns"] = {s.reg: triage.fleet_patterns(s.reg, now) for s in slots}
     payload["synthetic_notice"] = ("Schedule, roster and handover notes are SYNTHETIC (not in the data pack). "
                                    "All other records come from the data pack.")

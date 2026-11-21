@@ -25,6 +25,18 @@ docker compose up -d app
 open http://localhost:8000
 ```
 
+Then the tablet UI (Next.js, in `web/`, Node 18.18+):
+
+```bash
+cd web
+cp .env.local.example .env.local     # LINEREADY_API_URL=http://localhost:8000
+npm install
+npm run build && npm start           # or: npm run dev
+open http://localhost:3000            # Tonight, Dossier, Manuals, Ask, Readiness, Coach, Logbook, Aircraft
+```
+
+`http://localhost:8000` still serves the simple built-in UI for quick checks.
+
 Useful commands:
 
 ```bash
@@ -74,7 +86,9 @@ lineready/
                     (historian, manuals, logistics, compliance), review (narrator + critic)
   retrieval/        cascade: exact fault index -> fleet case memory -> guarded text search, fused by RRF
   infrastructure/   sources (AMOS xlsx, AVIATAR csv, TSM SGML), Postgres, audit chain, Claude adapter
-  interfaces/       FastAPI + tablet UI, CLI
+  interfaces/       FastAPI (+ simple built-in UI), CLI
+web/                Next.js tablet UI (see web/README.md): adapter in src/lib/backend.ts
+docs/               architecture document
 evals/              TSM retrieval backtest
 tests/              rule unit tests on real AMOS texts
 ```

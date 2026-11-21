@@ -1,6 +1,7 @@
 """HTTP API + static tablet UI."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Literal
 
@@ -42,14 +43,33 @@ def engineers():
 @app.get("/api/brief/{engineer_id}")
 def get_brief(engineer_id: str, rebuild: bool = False):
     if not rebuild:
-        row = query_one("""SELECT brief_id, payload FROM brief WHERE engineer_id = %s
+        row = query_one("""SELECT brief_id, built_at, payload FROM brief WHERE engineer_id = %s
                            ORDER BY brief_id DESC LIMIT 1""", (engineer_id,))
         if row:
-            return {**row["payload"], "brief_id": row["brief_id"]}
+            return {**row["payload"], "brief_id": row["brief_id"], "built_at": row["built_at"].isoformat()}
     try:
         return build_brief(engineer_id)
     except ValueError as e:
         raise HTTPException(404, str(e))
+
+
+NOISE = re.compile(r"\b(JOB SET-UP INFORMATION AMENDED|EFFECTIVITY UPDATED|ILLUSTRATION UPDATED|"
+                   r"REFERENCE DESIGNATION)\b\s*")
+
+
+def task_steps(body: str) -> list[str]:
+    """Readable steps from the flat TSM text: procedure part only, split at sentence ends, de-duplicated."""
+    text = NOISE.sub("", body or "")
+    start = min([i for i in (text.find("Fault Confirmation"), text.find("Fault Isolation")) if i >= 0] or [0])
+    seen, steps = set(), []
+    for sent in re.split(r"(?<=[.:])\s+(?=[A-Z(])", text[start:]):
+        sent = sent.strip()
+        key = sent.lower()
+        if len(sent) < 12 or key in seen:
+            continue
+        seen.add(key)
+        steps.append(sent)
+    return steps[:40]
 
 
 @app.get("/api/task/{task_id}")
@@ -58,6 +78,7 @@ def manual_task(task_id: str):
     if not t:
         raise HTTPException(404, "task not found in controlled TSM")
     t.pop("tsv", None)
+    t["steps"] = task_steps(t["body"])
     return t
 
 
